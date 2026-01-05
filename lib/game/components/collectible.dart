@@ -1,82 +1,50 @@
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
-import 'package:flame/sprite.dart';
+import 'package:flame/collisions.dart';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 
-/// A collectible item component for a platformer game.
-class Collectible extends SpriteComponent with HasGameRef {
-  /// The score value of the collectible.
-  final int scoreValue;
+class Collectible extends PositionComponent with CollisionCallbacks {
+  final int value;
+  double _floatOffset = 0;
 
-  /// The audio player for the collection sound effect.
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  /// The sprite animation for the collectible.
-  late final SpriteAnimation _animation;
-
-  /// Creates a new instance of the [Collectible] component.
-  ///
-  /// [position]: The initial position of the collectible.
-  /// [size]: The size of the collectible.
-  /// [scoreValue]: The score value of the collectible.
   Collectible({
     required Vector2 position,
-    required Vector2 size,
-    required this.scoreValue,
-  }) : super(position: position, size: size) {
-    _setupAnimation();
-  }
+    this.value = 10,
+  }) : super(
+          position: position,
+          size: Vector2(30, 30),
+          anchor: Anchor.center,
+        );
 
   @override
   Future<void> onLoad() async {
-    super.onLoad();
-    await _loadAudio();
+    await super.onLoad();
+    add(CircleHitbox());
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    _updateAnimation(dt);
+    
+    position.y += 80 * dt;
+    
+    _floatOffset += dt * 5;
+    position.x += (0.5 * ((_floatOffset % 2) < 1 ? 1 : -1));
+    
+    if (position.y > 900) {
+      removeFromParent();
+    }
   }
 
   @override
   void render(Canvas canvas) {
-    super.render(canvas);
-    _animation.getSprite().render(canvas, position: size / 2, size: size);
-  }
-
-  @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    super.onCollision(intersectionPoints, other);
-    _collectItem();
-  }
-
-  /// Loads the audio file for the collection sound effect.
-  Future<void> _loadAudio() async {
-    await _audioPlayer.setAsset('assets/sounds/collect_item.mp3');
-  }
-
-  /// Sets up the sprite animation for the collectible.
-  void _setupAnimation() {
-    final spriteSheet = SpriteSheet(
-      image: Image.asset('assets/images/collectible.png'),
-      srcSize: Vector2(32, 32),
+    canvas.drawCircle(
+      Offset(size.x / 2, size.y / 2),
+      size.x / 2,
+      Paint()..color = Colors.amber,
     );
-
-    _animation = spriteSheet.createAnimation(row: 0, stepTime: 0.2, to: 4);
   }
 
-  /// Updates the sprite animation for the collectible.
-  void _updateAnimation(double dt) {
-    _animation.update(dt);
-  }
-
-  /// Handles the collection of the item, including playing the sound effect and
-  /// triggering the score update.
-  void _collectItem() {
-    _audioPlayer.play();
-    gameRef.score += scoreValue;
+  void collect() {
     removeFromParent();
   }
 }
